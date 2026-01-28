@@ -1,0 +1,162 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="refresh" content="600"> <!-- refresh every 10 min -->
+  <title>Wall</title>
+  <style>
+    body{margin:0;background:#0b0b0c;color:#fff;font-family:-apple-system,Helvetica,Arial,sans-serif}
+    .wrap{padding:18px;max-width:980px}
+    .row{display:flex;gap:14px}
+    .card{background:#141417;border:1px solid #23232a;border-radius:16px;padding:14px}
+    .grow{flex:1}
+    .label{font-size:12px;letter-spacing:.18em;text-transform:uppercase;opacity:.7;margin:0 0 10px 0}
+    .clock{font-size:74px;font-weight:600;letter-spacing:1px;line-height:1}
+    .date{margin-top:10px;font-size:18px;opacity:.8}
+    ul{margin:0;padding-left:18px}
+    li{margin:8px 0;line-height:1.25}
+    iframe{width:100%;border:0;border-radius:12px;background:#0b0b0c}
+    .wxFrame{height:56px}     /* single-line weather */
+    .newsFrame{height:380px}
+    .muted{opacity:.65;font-size:12px;line-height:1.35;margin-top:10px}
+
+    @media (max-width: 700px){
+      .row{flex-direction:column}
+      .wxFrame{height:64px}
+      .newsFrame{height:320px}
+      .clock{font-size:64px}
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <div class="row">
+      <div class="card grow">
+        <div class="clock" id="clock">--:--</div>
+        <div class="date" id="date">—</div>
+      </div>
+
+      <div class="card" style="width:340px">
+        <div class="label">Weather · 43207</div>
+        <iframe class="wxFrame" src="https://wttr.in/43207?format=2"></iframe>
+        <div class="muted">If weather is blank, your network is blocking wttr.in.</div>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:14px">
+      <div class="card grow">
+        <div class="label">Next events</div>
+        <ul id="events"><li>Loading…</li></ul>
+        <div class="muted">
+          This reads <strong>./calendar.ics</strong> from the same site (no CORS issues).
+          Put a file named <strong>calendar.ics</strong> in the repo root.
+        </div>
+      </div>
+
+      <div class="card" style="width:380px">
+        <div class="label">Reuters headlines</div>
+        <iframe class="newsFrame"
+          src="https://rss.bloople.net/?url=https%3A%2F%2Fnews.google.com%2Frss%2Fsearch%3Fq%3Dsite%3Areuters.com%26hl%3Den-US%26gl%3DUS%26ceid%3DUS%3Aen&detail=12&limit=12&showtitle=false&type=html">
+        </iframe>
+        <div class="muted">Reuters via Google News RSS search. Tap a headline to open.</div>
+      </div>
+    </div>
+  </div>
+
+<script>
+(function(){
+  // Clock
+  function pad(n){return (n<10?'0':'')+n;}
+  function tick(){
+    var d=new Date();
+    var h=d.getHours(), m=d.getMinutes();
+    var ampm=h>=12?'PM':'AM';
+    var h12=h%12; if(h12===0) h12=12;
+    document.getElementById('clock').textContent = h12 + ':' + pad(m) + ' ' + ampm;
+    document.getElementById('date').textContent =
+      d.toLocaleDateString(undefined,{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  }
+  tick(); setInterval(tick, 1000);
+
+  // Calendar: same-origin fetch to avoid CORS issues
+  var CAL_URL = "./calendar.ics";
+
+  function parseICS(text){
+    var lines=text.replace(/\r/g,"").split("\n");
+
+    // unfold folded lines
+    var u=[];
+    for(var i=0;i<lines.length;i++){
+      var L=lines[i];
+      if((L[0]===" "||L[0]==="\t") && u.length) u[u.length-1]+=L.substr(1);
+      else u.push(L);
+    }
+
+    var events=[], cur=null;
+    for(i=0;i<u.length;i++){
+      var line=u[i];
+      if(line==="BEGIN:VEVENT"){cur={};}
+      else if(line==="END:VEVENT"){ if(cur && cur.dtstart) events.push(cur); cur=null; }
+      else if(cur){
+        var idx=line.indexOf(":"); if(idx<0) continue;
+        var key=line.substr(0,idx), val=line.substr(idx+1);
+
+        if(key.indexOf("DTSTART")===0) cur.dtstart=val;
+        if(key==="SUMMARY") cur.summary=val;
+        if(key==="LOCATION") cur.location=val;
+      }
+    }
+
+    function toDate(dt){
+      var z=dt.indexOf("Z")>-1;
+      var s=dt.replace("Z","");
+      if(s.length===8) return new Date(+s.substr(0,4),+s.substr(4,2)-1,+s.substr(6,2));
+      var yyyy=+s.substr(0,4), mm=+s.substr(4,2)-1, dd=+s.substr(6,2);
+      var hh=+s.substr(9,2), mi=+s.substr(11,2);
+      return z ? new Date(Date.UTC(yyyy,mm,dd,hh,mi,0)) : new Date(yyyy,mm,dd,hh,mi,0);
+    }
+
+    var now=new Date();
+    events.forEach(function(e){ e._start=toDate(e.dtstart); });
+    events.sort(function(a,b){ return a._start-b._start; });
+
+    return events.filter(function(e){ return e._start >= now; }).slice(0, 6);
+  }
+
+  function renderEvents(ev){
+    var ul=document.getElementById("events");
+    ul.innerHTML="";
+    if(!ev.length){ ul.innerHTML="<li>No upcoming events</li>"; return; }
+    ev.forEach(function(e){
+      var when = e._start.toLocaleString(undefined,{
+        weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'
+      });
+      var loc = e.location ? (" \u00B7 " + e.location) : "";
+      var li=document.createElement("li");
+      li.textContent = when + " — " + (e.summary||"Event") + loc;
+      ul.appendChild(li);
+    });
+  }
+
+  function loadCalendar(){
+    var r=new XMLHttpRequest();
+    r.onreadystatechange=function(){
+      if(r.readyState===4){
+        if(r.status!==200){
+          document.getElementById("events").innerHTML =
+            "<li>Calendar not found. Add calendar.ics to the repo root.</li>";
+          return;
+        }
+        renderEvents(parseICS(r.responseText));
+      }
+    };
+    r.open("GET", CAL_URL, true);
+    r.send();
+  }
+  loadCalendar();
+})();
+</script>
+</body>
+</html>
