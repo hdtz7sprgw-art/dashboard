@@ -12,7 +12,7 @@
       background:#0b0b0c;
       color:#fff;
       font-family:-apple-system, Helvetica, Arial, sans-serif;
-      overflow:hidden; /* no scrolling on the wall screen */
+      overflow:hidden; /* no page scroll */
     }
 
     .wrap{
@@ -21,15 +21,24 @@
       margin:0 auto;
       box-sizing:border-box;
       height:100%;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
     }
 
-    .row{ display:flex; }
+    .row{
+      display:flex;
+      gap:10px;
+      min-height:0; /* allows children to size/clip correctly */
+    }
+
     .card{
       background:#141417;
       border:1px solid #23232a;
       border-radius:16px;
       padding:10px;
       box-sizing:border-box;
+      overflow:hidden;          /* CRITICAL: prevent bleed/overlap */
     }
 
     .label{
@@ -40,11 +49,16 @@
       margin:0 0 8px 0;
     }
 
-    /* Top layout */
-    .topRow{ height: 30%; } /* tune for iPad mini */
-    .clockCard{ width:52%; margin-right:10px; }
-    .wxCard{ width:48%; }
+    /* Layout heights (tuned for iPad mini portrait) */
+    .topRow{ flex:0 0 26%; }
+    .calCard{ flex:0 0 42%; }
+    .newsCard{ flex:1 1 auto; }
 
+    /* Top row split */
+    .clockCard{ flex:1.15; }
+    .wxCard{ flex:0.85; }
+
+    /* Clock */
     .clock{
       font-size:56px;
       font-weight:650;
@@ -57,30 +71,24 @@
       opacity:.82;
     }
 
-    /* Weather image */
-    .wxImgWrap{
-      width:100%;
+    /* Weather: make it look good even if it's black-on-white */
+    .wxPanel{
       height:calc(100% - 22px); /* label space */
+      border-radius:12px;
+      background:#f4f4f6;       /* light inner panel (intentional) */
+      border:1px solid rgba(0,0,0,.12);
       display:flex;
       align-items:center;
       justify-content:center;
       overflow:hidden;
-      border-radius:12px;
-      background:#0f0f12;
-      border:1px solid rgba(255,255,255,.08);
     }
     .wxImg{
       width:100%;
       height:auto;
       display:block;
-
-      /* try to force dark-mode look if the PNG is light */
-      -webkit-filter: invert(1) hue-rotate(180deg) contrast(1.05);
-      filter: invert(1) hue-rotate(180deg) contrast(1.05);
     }
 
-    /* Calendar full width */
-    .calRow{ height: 38%; margin-top:10px; }
+    /* Calendar */
     .calTitle{
       font-size:14px;
       font-weight:650;
@@ -102,7 +110,7 @@
       padding:0 0 2px 2px;
     }
     table.cal td{
-      height:36px;
+      height:34px;
       vertical-align:top;
       padding:6px;
       border-radius:12px;
@@ -111,15 +119,18 @@
       font-size:12px;
       opacity:.92;
     }
-    td.off{ opacity:.18; }
     td.today{
       border-color:rgba(154,208,255,.55);
       box-shadow:0 0 0 1px rgba(154,208,255,.25) inset;
       background:#0f141c;
     }
+    td.blank{
+      background:transparent;
+      border:1px solid transparent;
+      opacity:0;
+    }
 
-    /* News full width */
-    .newsRow{ height: 30%; margin-top:10px; }
+    /* News */
     .newsList{
       list-style:none;
       padding:0;
@@ -139,18 +150,12 @@
       text-decoration:underline;
       opacity:1;
     }
-
-    /* If it ends up too cramped, shrink a bit */
-    @media (max-width: 520px){
-      .clock{ font-size:52px; }
-      table.cal td{ height:34px; }
-      .newsList li{ font-size:12px; }
-    }
   </style>
 </head>
 
 <body>
   <div class="wrap">
+
     <!-- TOP: Clock left, Weather right -->
     <div class="row topRow">
       <div class="card clockCard">
@@ -160,30 +165,27 @@
 
       <div class="card wxCard">
         <div class="label">Weather · 43207</div>
-        <div class="wxImgWrap">
-          <!-- wttr PNG: minimal, current conditions. iOS9 loads images more reliably than XHR. -->
-          <img
-            id="wxImg"
-            class="wxImg"
-            alt="Weather"
-            src="https://wttr.in/43207.png?0q&lang=en"
-          >
+        <div class="wxPanel">
+          <!-- Use PNG; iOS9 loads images reliably. Light panel makes it look intentional. -->
+          <img id="wxImg" class="wxImg" alt="Weather"
+               src="https://wttr.in/43207.png?0q&lang=en">
         </div>
       </div>
     </div>
 
     <!-- Calendar: full width -->
-    <div class="card calRow">
+    <div class="card calCard">
       <div class="label">Calendar</div>
       <div class="calTitle" id="calTitle">—</div>
       <div id="calWrap"></div>
     </div>
 
     <!-- News: full width -->
-    <div class="card newsRow">
+    <div class="card newsCard">
       <div class="label">Reuters</div>
       <ul class="newsList" id="news"><li>Loading…</li></ul>
     </div>
+
   </div>
 
 <script>
@@ -201,23 +203,21 @@
   }
   tick(); setInterval(tick, 1000);
 
-  // ---- Weather: force refresh of PNG (prevents iOS cache sticking) ----
-  // Keeps the same look but updates the weather without relying on JS fetch APIs.
+  // ---- Weather: bust cache every 10 min ----
   function refreshWx(){
     var img = document.getElementById('wxImg');
     var base = "https://wttr.in/43207.png?0q&lang=en";
     img.src = base + "&_=" + (new Date().getTime());
   }
   refreshWx();
-  setInterval(refreshWx, 10 * 60 * 1000); // every 10 minutes
+  setInterval(refreshWx, 10*60*1000);
 
-  // ---- Calendar (month grid via TABLE; iOS9-safe) ----
+  // ---- Calendar: CURRENT MONTH ONLY (no prev/next dates) ----
   var now = new Date();
   var year = now.getFullYear();
   var month = now.getMonth();
   var today = now.getDate();
 
-  // Month name only (no year/day here)
   document.getElementById('calTitle').textContent =
     now.toLocaleDateString(undefined,{month:'long'});
 
@@ -225,44 +225,31 @@
   var first = new Date(year, month, 1);
   var startDow = first.getDay();
   var daysInMonth = new Date(year, month+1, 0).getDate();
-  var daysInPrevMonth = new Date(year, month, 0).getDate();
-
-  var cells = [];
-  for(var i=0;i<42;i++){
-    var dayNum, off=false, isToday=false;
-    if(i < startDow){
-      dayNum = (daysInPrevMonth - (startDow - 1 - i));
-      off = true;
-    } else if(i >= startDow + daysInMonth){
-      dayNum = (i - (startDow + daysInMonth) + 1);
-      off = true;
-    } else {
-      dayNum = (i - startDow + 1);
-      isToday = (dayNum === today);
-    }
-    cells.push({n:dayNum, off:off, today:isToday});
-  }
 
   var html = '<table class="cal"><thead><tr>';
   for(var d=0; d<7; d++) html += '<th>' + dows[d] + '</th>';
   html += '</tr></thead><tbody>';
 
+  var day = 1;
   for(var r=0; r<6; r++){
     html += '<tr>';
     for(var c=0; c<7; c++){
-      var cell = cells[r*7 + c];
-      var cls = [];
-      if(cell.off) cls.push('off');
-      if(cell.today) cls.push('today');
-      html += '<td class="' + cls.join(' ') + '">' + cell.n + '</td>';
+      var cellIndex = r*7 + c;
+      if(cellIndex < startDow || day > daysInMonth){
+        html += '<td class="blank">.</td>';
+      } else {
+        var cls = (day === today) ? 'today' : '';
+        html += '<td class="'+cls+'">' + day + '</td>';
+        day++;
+      }
     }
     html += '</tr>';
   }
   html += '</tbody></table>';
+
   document.getElementById('calWrap').innerHTML = html;
 
-  // ---- News (limit to 6 so no scroll) ----
-  // If this bridge ever fails on iOS9 (TLS), we’ll swap to an iframe-based list.
+  // ---- News: limit to 6 to keep within card ----
   var rssUrl = "https://news.google.com/rss/search?q=site:reuters.com&hl=en-US&gl=US&ceid=US:en";
   var bridge = "https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(rssUrl);
 
