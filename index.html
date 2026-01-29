@@ -22,7 +22,7 @@
       background:#0b0b0c;
       color:#fff;
       font-family:-apple-system, Helvetica, Arial, sans-serif;
-      overflow:hidden; /* no page scroll */
+      overflow:hidden;
       -webkit-text-size-adjust:100%;
     }
 
@@ -49,7 +49,7 @@
       border-radius:16px;
       padding:10px;
       box-sizing:border-box;
-      overflow:hidden; /* prevents bleed/overlap */
+      overflow:hidden;
     }
 
     .label{
@@ -65,7 +65,6 @@
     .calCard{ flex:0 0 44%; }
     .newsCard{ flex:1 1 auto; }
 
-    /* Top row split */
     .clockCard{ flex:1.15; }
     .wxCard{ flex:0.85; }
 
@@ -83,9 +82,7 @@
     }
 
     /* Day progress bar */
-    .progressWrap{
-      margin-top:10px;
-    }
+    .progressWrap{ margin-top:10px; }
     .progressMeta{
       display:flex;
       justify-content:space-between;
@@ -106,13 +103,13 @@
       background:rgba(154,208,255,.85);
     }
 
-    /* Weather (text-only, styled like the clock) */
+    /* Weather (text-only, stylized) */
     .wxText{
-      height:calc(100% - 22px); /* label space */
+      height:calc(100% - 22px);
       display:flex;
       flex-direction:column;
       justify-content:center;
-      gap:6px;
+      gap:8px;
     }
     .wxTemp{
       font-size:46px;
@@ -122,16 +119,28 @@
     }
     .wxCond{
       font-size:16px;
-      opacity:.85;
+      opacity:.88;
       line-height:1.2;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
     }
-    .wxSub{
+    .wxMetaRow{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
       font-size:12px;
-      opacity:.65;
-      line-height:1.2;
+      opacity:.7;
+    }
+    .wxPill{
+      border:1px solid rgba(255,255,255,.10);
+      background:#101013;
+      border-radius:999px;
+      padding:6px 10px;
+      white-space:nowrap;
     }
 
-    /* Calendar (current month only) */
+    /* Calendar */
     .calTitle{
       font-size:14px;
       font-weight:650;
@@ -191,7 +200,6 @@
 <body>
   <div class="wrap">
 
-    <!-- TOP: Clock left, Weather right -->
     <div class="row topRow">
       <div class="card clockCard">
         <div class="clock" id="clock">--:--</div>
@@ -209,21 +217,22 @@
       <div class="card wxCard">
         <div class="label">Weather · 43207</div>
         <div class="wxText">
-          <div class="wxTemp" id="wxTemp">—°</div>
+          <div class="wxTemp" id="wxTemp">—°F</div>
           <div class="wxCond" id="wxCond">Loading…</div>
-          <div class="wxSub" id="wxSub"></div>
+          <div class="wxMetaRow">
+            <div class="wxPill" id="wxSunset">Sunset —</div>
+            <div class="wxPill" id="wxFeels">Feels —</div>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- Calendar: full width -->
     <div class="card calCard">
       <div class="label">Calendar</div>
       <div class="calTitle" id="calTitle">—</div>
       <div id="calWrap"></div>
     </div>
 
-    <!-- News: full width -->
     <div class="card newsCard">
       <div class="label">Reuters</div>
       <ul class="newsList" id="news"><li>Loading…</li></ul>
@@ -233,7 +242,6 @@
 
 <script>
 (function(){
-  // Force links to stay in same window (reduces iOS9 "break out to Safari" weirdness)
   document.addEventListener('click', function(e){
     var t = e.target;
     while(t && t.tagName !== 'A') t = t.parentNode;
@@ -247,7 +255,6 @@
   function updateClockAndProgress(){
     var d = new Date();
 
-    // Clock
     var h = d.getHours(), m = d.getMinutes();
     var ampm = h>=12 ? 'PM' : 'AM';
     var h12 = h%12; if(h12===0) h12=12;
@@ -255,70 +262,107 @@
     document.getElementById('date').textContent =
       d.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric',year:'numeric'});
 
-    // Day progress
     var start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0);
     var end   = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59);
     var pct = Math.max(0, Math.min(1, (d - start) / (end - start)));
-    var pctText = Math.round(pct*100) + "%";
-    document.getElementById('dayPct').textContent = pctText;
+    document.getElementById('dayPct').textContent = Math.round(pct*100) + "%";
 
     var msLeft = end - d;
     var hrsLeft = Math.floor(msLeft / (1000*60*60));
     var minsLeft = Math.floor((msLeft - hrsLeft*1000*60*60) / (1000*60));
     document.getElementById('dayLeft').textContent = hrsLeft + "h " + minsLeft + "m left";
-
     document.getElementById('barFill').style.width = (pct*100) + "%";
   }
   updateClockAndProgress();
   setInterval(updateClockAndProgress, 1000);
 
-  // ---- Weather (text-only from wttr.in) ----
-  // Uses plain text endpoint; most compatible with old Safari.
-  function loadWeather(){
-    var req = new XMLHttpRequest();
-    req.onreadystatechange = function(){
-      if(req.readyState === 4){
-        var tempEl = document.getElementById('wxTemp');
-        var condEl = document.getElementById('wxCond');
-        var subEl  = document.getElementById('wxSub');
-
-        if(req.status !== 200){
-          tempEl.textContent = "—°";
-          condEl.textContent = "Weather unavailable";
-          subEl.textContent  = "";
-          return;
-        }
-
-        // Example: "Columbus: 🌧 10°F"
-        var text = (req.responseText || "").replace(/\s+/g, " ").trim();
-
-        // Pull temp token ending in °F
-        var temp = "—°";
-        var parts = text.split(" ");
-        for(var i=0;i<parts.length;i++){
-          if(parts[i].indexOf("°F") > -1){
-            temp = parts[i];
-            break;
-          }
-        }
-
-        // Condition: remove leading "Location:" if present
-        // Keep it simple: drop everything up to first emoji or first temp token
-        var cond = text;
-        var colon = cond.indexOf(":");
-        if(colon > -1) cond = cond.substr(colon+1).trim(); // after "Columbus:"
-        // Remove the temp itself from the condition line
-        cond = cond.replace(temp, "").trim();
-
-        tempEl.textContent = temp;
-        condEl.textContent = cond || "—";
-        subEl.textContent  = ""; // keep clean; add wind/feels-like later if you want
+  // ---- Simple XHR JSON fetch (iOS9 safe-ish) ----
+  function getJSON(url, cb){
+    var r = new XMLHttpRequest();
+    r.onreadystatechange = function(){
+      if(r.readyState === 4){
+        if(r.status !== 200) return cb(null);
+        try { cb(JSON.parse(r.responseText)); } catch(e){ cb(null); }
       }
     };
-
-    req.open("GET", "https://wttr.in/43207?format=3", true);
-    req.send();
+    r.open("GET", url, true);
+    r.setRequestHeader("Accept", "application/geo+json, application/json");
+    r.send();
   }
+
+  // ---- Weather via NOAA/NWS ----
+  // Step 1: Get gridpoint for 43207 (Columbus area) using NWS points endpoint with lat/lon.
+  // 43207 is roughly 39.92, -82.93 (close enough for a dashboard).
+  var LAT = 39.92;
+  var LON = -82.93;
+
+  function setWx(tempF, cond, feelsF, sunsetStr){
+    document.getElementById('wxTemp').textContent = (tempF != null ? (tempF + "°F") : "—°F");
+    document.getElementById('wxCond').textContent = cond || "Weather unavailable";
+    document.getElementById('wxFeels').textContent = "Feels " + (feelsF != null ? (feelsF + "°F") : "—");
+    document.getElementById('wxSunset').textContent = "Sunset " + (sunsetStr || "—");
+  }
+
+  function loadWeather(){
+    // points: https://api.weather.gov/points/{lat},{lon}
+    getJSON("https://api.weather.gov/points/" + LAT + "," + LON, function(points){
+      if(!points || !points.properties){
+        setWx(null, "Weather unavailable", null, null);
+        return;
+      }
+
+      var forecastHourly = points.properties.forecastHourly; // JSON URL
+      var gridId = points.properties.gridId;
+      var gridX = points.properties.gridX;
+      var gridY = points.properties.gridY;
+
+      // Hourly conditions
+      getJSON(forecastHourly, function(hourly){
+        if(!hourly || !hourly.properties || !hourly.properties.periods || !hourly.properties.periods.length){
+          setWx(null, "Weather unavailable", null, null);
+          return;
+        }
+        var p0 = hourly.properties.periods[0];
+
+        // p0.temperature already in F
+        var tempF = (typeof p0.temperature === "number") ? p0.temperature : null;
+        var cond = p0.shortForecast || p0.detailedForecast || "—";
+
+        // Use wind chill / heat index if available (in grids endpoint); if not, just mirror temp
+        var feels = tempF;
+
+        // Try to fetch "feels like" from grid data (optional)
+        var gridUrl = "https://api.weather.gov/gridpoints/" + gridId + "/" + gridX + "," + gridY;
+
+        getJSON(gridUrl, function(grid){
+          if(grid && grid.properties){
+            // temperature + apparentTemperature are arrays; take first value if exists
+            try{
+              var app = grid.properties.apparentTemperature && grid.properties.apparentTemperature.values;
+              if(app && app.length && typeof app[0].value === "number"){
+                // apparentTemperature is in Celsius
+                feels = Math.round(app[0].value * 9/5 + 32);
+              }
+            }catch(e){}
+          }
+
+          // Sunset from sunrise-sunset.org (simple, no emoji)
+          // It returns UTC; we convert to local.
+          var ssUrl = "https://api.sunrise-sunset.org/json?lat=" + LAT + "&lng=" + LON + "&formatted=0";
+          getJSON(ssUrl, function(ss){
+            var sunsetStr = null;
+            if(ss && ss.results && ss.results.sunset){
+              var sunsetUtc = new Date(ss.results.sunset);
+              // Convert to local and format time only
+              sunsetStr = sunsetUtc.toLocaleTimeString(undefined, {hour:'numeric', minute:'2-digit'});
+            }
+            setWx(tempF, cond, feels, sunsetStr);
+          });
+        });
+      });
+    });
+  }
+
   loadWeather();
   setInterval(loadWeather, 10*60*1000);
 
@@ -358,7 +402,7 @@
   html += '</tbody></table>';
   document.getElementById('calWrap').innerHTML = html;
 
-  // ---- News (limit to 6; no scroll) ----
+  // ---- News ----
   var rssUrl = "https://news.google.com/rss/search?q=site:reuters.com&hl=en-US&gl=US&ceid=US:en";
   var bridge = "https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(rssUrl);
 
