@@ -134,7 +134,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  #wx-sunset {
+  #wx-loc {
     margin-top: 8px;
     font-size: 11px;
     color: #ff9f0a;
@@ -190,7 +190,7 @@
     overflow: hidden;
   }
   .news-source { font-size: 10px; color: #636366; margin-top: 2px; display: block; }
-  .error-text { color: #ff453a; font-size: 11px; margin-top:5px;}
+  .error-text { color: #ff453a; font-size: 11px; margin-top:5px; white-space: pre-wrap; word-break: break-all;}
 
 </style>
 </head>
@@ -218,13 +218,12 @@
 
     <div class="card col-1">
       <div class="header">
-        <span>Temp</span>
-        <span style="opacity:0.5">43207</span>
+        <span>Weather</span>
       </div>
       <div class="wx-wrapper">
         <div id="wx-temp">--°</div>
         <div id="wx-cond">Loading...</div>
-        <div id="wx-sunset"></div>
+        <div id="wx-loc">Columbus</div>
         <div id="wx-error" class="error-text" style="display:none"></div>
       </div>
     </div>
@@ -255,37 +254,18 @@
   'use strict';
 
   // --- CONFIG ---
-  // Coordinates for 43207 (approx)
-  var LAT = "39.88"; 
-  var LON = "-82.99";
-  // Open-Meteo API (No key required, JSON output)
-  var WEATHER_API = "https://api.open-meteo.com/v1/forecast?latitude=" + LAT + "&longitude=" + LON + "&current=temperature_2m,weather_code,is_day&daily=sunset&temperature_unit=fahrenheit&timezone=auto";
+  // Using the SAME bridge as news (rss2json) to guarantee it works on iOS 9
+  // Weather Feed: RSSWeather.com for 43207 (Plain HTTP source, fetched via HTTPS bridge)
+  var WEATHER_RSS = "http://www.rssweather.com/zipcode/43207/rss.php";
+  var WEATHER_API = "https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(WEATHER_RSS);
   
-  // News via Proxy
-  var RSS_URL = "https://news.google.com/rss/search?q=site:reuters.com+when:1d&hl=en-US&gl=US&ceid=US:en";
-  var RSS_API = "https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(RSS_URL);
+  // News Feed
+  var NEWS_RSS = "https://news.google.com/rss/search?q=site:reuters.com+when:1d&hl=en-US&gl=US&ceid=US:en";
+  var NEWS_API = "https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(NEWS_RSS);
 
   // --- HELPERS ---
   function getEl(id) { return document.getElementById(id); }
   function pad(n) { return n < 10 ? '0' + n : n; }
-
-  // --- WMO WEATHER CODES TRANSLATOR ---
-  function getWmoDesc(code) {
-    if(code === 0) return "Clear sky";
-    if(code === 1) return "Mainly clear";
-    if(code === 2) return "Partly cloudy";
-    if(code === 3) return "Overcast";
-    if(code >= 45 && code <= 48) return "Fog";
-    if(code >= 51 && code <= 55) return "Drizzle";
-    if(code >= 56 && code <= 57) return "Freezing Drizzle";
-    if(code >= 61 && code <= 65) return "Rain";
-    if(code >= 66 && code <= 67) return "Freezing Rain";
-    if(code >= 71 && code <= 77) return "Snow";
-    if(code >= 80 && code <= 82) return "Rain showers";
-    if(code >= 85 && code <= 86) return "Snow showers";
-    if(code >= 95) return "Thunderstorm";
-    return "Unknown";
-  }
 
   // --- DATA FETCHING ---
   function fetchUrl(url, callback) {
@@ -295,7 +275,7 @@
         if (xhr.status === 200) {
           callback(null, xhr.responseText);
         } else {
-          callback(xhr.status, null);
+          callback(xhr.status, "");
         }
       }
     };
@@ -307,7 +287,6 @@
   function updateClock() {
     var now = new Date();
     
-    // Time
     var hours = now.getHours();
     var minutes = now.getMinutes();
     var ampm = hours >= 12 ? 'pm' : 'am';
@@ -315,11 +294,9 @@
     hours = hours ? hours : 12;
     getEl('time').innerHTML = hours + ':' + pad(minutes) + '<span style="font-size:20px; margin-left:4px; text-transform:uppercase;">' + ampm + '</span>';
     
-    // Date
     var options = { weekday: 'long', month: 'long', day: 'numeric' };
     getEl('date').innerText = now.toLocaleDateString('en-US', options);
 
-    // Progress
     var startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0,0,0);
     var endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23,59,59);
     var dayPct = ((now - startOfDay) / (endOfDay - startOfDay)) * 100;
@@ -336,45 +313,47 @@
   function updateWeather() {
     fetchUrl(WEATHER_API, function(err, data) {
       if(err) {
-        getEl('wx-cond').innerText = "--";
         getEl('wx-error').style.display = "block";
-        getEl('wx-error').innerText = "Err: " + err; // Shows "Err: 0" if SSL fails
+        getEl('wx-error').innerText = "Net Err: " + err;
         return;
       }
       try {
         var json = JSON.parse(data);
-        var current = json.current;
-        var daily = json.daily;
+        // Expecting RSS Item Title: "Columbus 43207, OH - 34°F / 1°C"
+        // Expecting RSS Item Desc: "Condition: Clear | Humidity: ..."
         
-        // Temp
-        getEl('wx-temp').innerText = Math.round(current.temperature_2m) + "°";
+        var item = json.items[0];
+        if(!item) throw new Error("No Data");
+
+        var title = item.title; 
+        var desc = item.description || item.guid; // Fallback
+
+        // Extract Temp (Finds "34°F")
+        var tempMatch = title.match(/(\d+°F)/);
+        var temp = tempMatch ? tempMatch[1] : "--°";
         
-        // Condition (Translate code to text)
-        var desc = getWmoDesc(current.weather_code);
-        getEl('wx-cond').innerText = desc;
-        
-        // Sunset (Parse "2023-10-25T18:45")
-        if(daily && daily.sunset && daily.sunset.length > 0) {
-          var sunsetTime = daily.sunset[0].split('T')[1]; // "18:45"
-          // Convert to 12h
-          var parts = sunsetTime.split(':');
-          var h = parseInt(parts[0], 10);
-          var m = parts[1];
-          var sAmPm = h >= 12 ? 'PM' : 'AM';
-          h = h % 12 || 12;
-          getEl('wx-sunset').innerText = "Sunset " + h + ":" + m + " " + sAmPm;
+        // Extract Condition (Finds text after "Condition: " up to " |")
+        // Example: "Condition: Overcast | Humidity..."
+        var cond = "Unknown";
+        if(desc.indexOf('Condition:') !== -1) {
+           var parts = desc.split('|');
+           cond = parts[0].replace('Condition:', '').trim();
         }
-        
+
+        getEl('wx-temp').innerText = temp;
+        getEl('wx-cond').innerText = cond;
         getEl('wx-error').style.display = "none";
+
       } catch(e) {
         getEl('wx-error').style.display = "block";
-        getEl('wx-error').innerText = "Parse Error";
+        // Print the first 50 chars of data to see what we actually got
+        getEl('wx-error').innerText = "Parse: " + e.message + "\nRecv: " + data.substring(0, 50);
       }
     });
   }
 
   function updateNews() {
-    fetchUrl(RSS_API, function(err, data) {
+    fetchUrl(NEWS_API, function(err, data) {
       if(err) return;
       try {
         var json = JSON.parse(data);
