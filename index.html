@@ -9,6 +9,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Wall">
   <meta name="format-detection" content="telephone=no">
+
+  <!-- Refresh whole page every 10 min -->
   <meta http-equiv="refresh" content="600">
 
   <title>Wall</title>
@@ -21,27 +23,33 @@
       color:#fff;
       font-family:-apple-system, Helvetica, Arial, sans-serif;
       overflow:hidden;
+      -webkit-text-size-adjust:100%;
     }
 
     .wrap{
       padding:10px;
       max-width:760px;
       margin:0 auto;
+      box-sizing:border-box;
       height:100%;
       display:flex;
       flex-direction:column;
       gap:10px;
-      box-sizing:border-box;
     }
 
-    .row{ display:flex; gap:10px; min-height:0; }
+    .row{
+      display:flex;
+      gap:10px;
+      min-height:0;
+    }
+
     .card{
       background:#141417;
       border:1px solid #23232a;
       border-radius:16px;
       padding:10px;
-      overflow:hidden;
       box-sizing:border-box;
+      overflow:hidden;
     }
 
     .label{
@@ -49,13 +57,13 @@
       letter-spacing:.18em;
       text-transform:uppercase;
       opacity:.65;
-      margin-bottom:8px;
+      margin:0 0 8px 0;
     }
 
-    /* Layout */
+    /* Heights tuned for iPad mini portrait */
     .topRow{ flex:0 0 26%; }
     .calCard{ flex:0 0 44%; }
-    .newsCard{ flex:1; }
+    .newsCard{ flex:1 1 auto; }
 
     .clockCard{ flex:1.15; }
     .wxCard{ flex:0.85; }
@@ -73,8 +81,9 @@
       opacity:.82;
     }
 
-    /* Day progress */
+    /* Progress bars */
     .progressWrap{ margin-top:10px; }
+    .progressBlock{ margin-top:10px; }
     .progressMeta{
       display:flex;
       justify-content:space-between;
@@ -94,33 +103,59 @@
       width:0%;
       background:rgba(154,208,255,.85);
     }
+    .barFillYear{
+      height:100%;
+      width:0%;
+      background:rgba(255,255,255,.38);
+    }
 
-    /* Weather (plain text, styled) */
+    /* Weather (pure text, styled) */
     .wxText{
       height:calc(100% - 22px);
       display:flex;
       flex-direction:column;
       justify-content:center;
-      gap:6px;
+      gap:10px;
+    }
+    .wxTempRow{
+      display:flex;
+      align-items:baseline;
+      justify-content:space-between;
+      gap:10px;
     }
     .wxTemp{
       font-size:46px;
       font-weight:650;
       line-height:1;
+      letter-spacing:.5px;
+      white-space:nowrap;
+    }
+    .wxSunset{
+      font-size:12px;
+      opacity:.75;
+      text-transform:uppercase;
+      letter-spacing:.12em;
+      white-space:nowrap;
     }
     .wxCond{
       font-size:16px;
-      opacity:.85;
+      opacity:.88;
+      line-height:1.2;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
     }
 
     /* Calendar */
     .calTitle{
       font-size:14px;
       font-weight:650;
-      margin-bottom:6px;
+      opacity:.95;
+      margin:0 0 6px 0;
     }
     table.cal{
       width:100%;
+      border-collapse:separate;
       border-spacing:6px;
       table-layout:fixed;
     }
@@ -130,135 +165,260 @@
       text-transform:uppercase;
       opacity:.5;
       text-align:left;
+      padding:0 0 2px 2px;
     }
     table.cal td{
       height:34px;
+      vertical-align:top;
       padding:6px;
       border-radius:12px;
       background:#101013;
       border:1px solid rgba(255,255,255,.08);
       font-size:12px;
+      opacity:.92;
     }
     td.today{
       border-color:rgba(154,208,255,.55);
+      box-shadow:0 0 0 1px rgba(154,208,255,.25) inset;
       background:#0f141c;
     }
-    td.blank{ opacity:0; }
+    td.blank{
+      background:transparent;
+      border:1px solid transparent;
+      opacity:0;
+    }
 
     /* News */
     .newsList{ list-style:none; padding:0; margin:0; }
-    .newsList li{ margin:7px 0; font-size:13px; }
-    .newsList a{ color:#fff; text-decoration:none; opacity:.9; }
+    .newsList li{ margin:7px 0; line-height:1.15; font-size:13px; }
+    .newsList a{ color:#fff; text-decoration:none; opacity:.92; }
+    .newsList a:active, .newsList a:hover{ text-decoration:underline; opacity:1; }
 
+    @media (max-width: 520px){
+      .clock{ font-size:52px; }
+      .wxTemp{ font-size:42px; }
+      table.cal td{ height:32px; }
+      .newsList li{ font-size:12px; }
+    }
   </style>
 </head>
 
 <body>
-<div class="wrap">
+  <div class="wrap">
 
-  <div class="row topRow">
-    <div class="card clockCard">
-      <div class="clock" id="clock">--:--</div>
-      <div class="date" id="date">—</div>
+    <div class="row topRow">
+      <div class="card clockCard">
+        <div class="clock" id="clock">--:--</div>
+        <div class="date" id="date">—</div>
 
-      <div class="progressWrap">
-        <div class="progressMeta">
-          <span id="dayPct">—%</span>
-          <span id="dayLeft">—h left</span>
+        <!-- Day progress -->
+        <div class="progressWrap">
+          <div class="progressMeta">
+            <span id="dayPct">—%</span>
+            <span id="dayLeft">—h left</span>
+          </div>
+          <div class="bar"><div class="barFill" id="barFillDay"></div></div>
         </div>
-        <div class="bar"><div class="barFill" id="barFill"></div></div>
+
+        <!-- Year progress -->
+        <div class="progressBlock">
+          <div class="progressMeta">
+            <span id="yearPct">—%</span>
+            <span id="yearLeft">— days left</span>
+          </div>
+          <div class="bar"><div class="barFillYear" id="barFillYear"></div></div>
+        </div>
+      </div>
+
+      <div class="card wxCard">
+        <div class="label">Weather · 43207</div>
+        <div class="wxText">
+          <div class="wxTempRow">
+            <div class="wxTemp" id="wxTemp">—°F</div>
+            <div class="wxSunset" id="wxSunset">Sunset —</div>
+          </div>
+          <div class="wxCond" id="wxCond">Loading…</div>
+        </div>
       </div>
     </div>
 
-    <div class="card wxCard">
-      <div class="label">Weather · 43207</div>
-      <div class="wxText">
-        <div class="wxTemp" id="wxTemp">—°</div>
-        <div class="wxCond" id="wxCond">Loading…</div>
-      </div>
+    <div class="card calCard">
+      <div class="label">Calendar</div>
+      <div class="calTitle" id="calTitle">—</div>
+      <div id="calWrap"></div>
     </div>
-  </div>
 
-  <div class="card calCard">
-    <div class="label">Calendar</div>
-    <div class="calTitle" id="calTitle">—</div>
-    <div id="calWrap"></div>
-  </div>
+    <div class="card newsCard">
+      <div class="label">Reuters</div>
+      <ul class="newsList" id="news"><li>Loading…</li></ul>
+    </div>
 
-  <div class="card newsCard">
-    <div class="label">Reuters</div>
-    <ul class="newsList" id="news"><li>Loading…</li></ul>
   </div>
-
-</div>
 
 <script>
 (function(){
-  function pad(n){return (n<10?'0':'')+n;}
+  // Keep links in same window (reduces iOS9 breakout weirdness)
+  document.addEventListener('click', function(e){
+    var t = e.target;
+    while(t && t.tagName !== 'A') t = t.parentNode;
+    if(!t) return;
+    t.setAttribute('target','_self');
+  }, true);
 
-  /* Clock + progress */
-  function tick(){
-    var d=new Date();
-    var h=d.getHours(), m=d.getMinutes();
-    var am=h>=12?'PM':'AM';
-    h=h%12||12;
-    document.getElementById('clock').textContent=h+':'+pad(m)+' '+am;
-    document.getElementById('date').textContent=
+  function pad(n){ return (n<10?'0':'')+n; }
+
+  // ---- Clock + Day/Year Progress ----
+  function updateTimeBars(){
+    var d = new Date();
+
+    // Clock
+    var h = d.getHours(), m = d.getMinutes();
+    var ampm = h>=12 ? 'PM' : 'AM';
+    var h12 = h%12; if(h12===0) h12=12;
+    document.getElementById('clock').textContent = h12 + ':' + pad(m) + ' ' + ampm;
+    document.getElementById('date').textContent =
       d.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric',year:'numeric'});
 
-    var start=new Date(d.getFullYear(),d.getMonth(),d.getDate());
-    var end=new Date(d.getFullYear(),d.getMonth(),d.getDate(),23,59,59);
-    var pct=(d-start)/(end-start);
-    document.getElementById('dayPct').textContent=Math.round(pct*100)+'%';
-    document.getElementById('dayLeft').textContent=
-      Math.floor((end-d)/36e5)+'h left';
-    document.getElementById('barFill').style.width=(pct*100)+'%';
-  }
-  tick(); setInterval(tick,1000);
+    // Day progress
+    var startDay = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0);
+    var endDay   = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59);
+    var pctDay = Math.max(0, Math.min(1, (d - startDay) / (endDay - startDay)));
+    document.getElementById('dayPct').textContent = Math.round(pctDay*100) + "%";
+    var msLeft = endDay - d;
+    var hrsLeft = Math.floor(msLeft / (1000*60*60));
+    var minsLeft = Math.floor((msLeft - hrsLeft*1000*60*60) / (1000*60));
+    document.getElementById('dayLeft').textContent = hrsLeft + "h " + minsLeft + "m left";
+    document.getElementById('barFillDay').style.width = (pctDay*100) + "%";
 
-  /* Weather — dumb text, cleaned */
+    // Year progress
+    var y = d.getFullYear();
+    var startYear = new Date(y, 0, 1, 0, 0, 0);
+    var endYear = new Date(y, 11, 31, 23, 59, 59);
+
+    var pctYear = Math.max(0, Math.min(1, (d - startYear) / (endYear - startYear)));
+    document.getElementById('yearPct').textContent = Math.round(pctYear*100) + "%";
+    document.getElementById('barFillYear').style.width = (pctYear*100) + "%";
+
+    // days left
+    var msYearLeft = endYear - d;
+    var daysLeft = Math.ceil(msYearLeft / (1000*60*60*24));
+    document.getElementById('yearLeft').textContent = daysLeft + " days left";
+  }
+  updateTimeBars();
+  setInterval(updateTimeBars, 1000);
+
+  // ---- Weather via wttr custom format (NO EMOJI) ----
+  // %t = temp, %C = condition text, %s = sunset time
+  // &u = US units
   function loadWeather(){
-    var r=new XMLHttpRequest();
-    r.onreadystatechange=function(){
-      if(r.readyState===4){
-        if(r.status!==200){ return; }
-        var t=r.responseText.replace(/[^\x00-\x7F]/g,'').trim();
-        var parts=t.split(' ');
-        var temp='—°', cond='';
-        for(var i=0;i<parts.length;i++){
-          if(parts[i].indexOf('°F')>-1){ temp=parts[i]; }
-          else cond+=parts[i]+' ';
+    var url = "https://wttr.in/43207?format=%t|%C|%s&u";
+    var r = new XMLHttpRequest();
+    r.onreadystatechange = function(){
+      if(r.readyState === 4){
+        if(r.status !== 200){
+          document.getElementById('wxTemp').textContent = "—°F";
+          document.getElementById('wxCond').textContent = "Weather unavailable";
+          document.getElementById('wxSunset').textContent = "Sunset —";
+          return;
         }
-        document.getElementById('wxTemp').textContent=temp;
-        document.getElementById('wxCond').textContent=cond.trim();
+
+        var text = (r.responseText || "").replace(/\s+/g," ").trim();
+        // Expected: "32°F|Light snow|5:41 PM"
+        var parts = text.split("|");
+
+        var temp = (parts[0] || "").trim();
+        var cond = (parts[1] || "").trim();
+        var sunset = (parts[2] || "").trim();
+
+        // sanitize weird characters if any
+        temp = temp.replace(/[^\x20-\x7E]/g, "").trim();
+        cond = cond.replace(/[^\x20-\x7E]/g, "").trim();
+        sunset = sunset.replace(/[^\x20-\x7E]/g, "").trim();
+
+        document.getElementById('wxTemp').textContent = temp || "—°F";
+        document.getElementById('wxCond').textContent = cond || "—";
+        document.getElementById('wxSunset').textContent = "Sunset " + (sunset || "—");
       }
     };
-    r.open('GET','https://wttr.in/43207?format=2',true);
+    r.open("GET", url, true);
     r.send();
   }
   loadWeather();
-  setInterval(loadWeather,600000);
+  setInterval(loadWeather, 10*60*1000);
 
-  /* Calendar — current month only */
-  var n=new Date(), y=n.getFullYear(), m=n.getMonth(), d=n.getDate();
-  document.getElementById('calTitle').textContent=
-    n.toLocaleDateString(undefined,{month:'long'});
+  // ---- Calendar: current month only ----
+  var now = new Date();
+  var year = now.getFullYear();
+  var month = now.getMonth();
+  var today = now.getDate();
 
-  var first=new Date(y,m,1).getDay();
-  var days=new Date(y,m+1,0).getDate();
-  var html='<table class="cal"><tr>';
-  ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(function(x){
-    html+='<th>'+x+'</th>';
-  });
-  html+='</tr><tr>';
+  document.getElementById('calTitle').textContent =
+    now.toLocaleDateString(undefined,{month:'long'});
 
-  for(var i=0;i<first;i++) html+='<td class="blank"></td>';
-  for(var day=1;day<=days;day++){
-    if((first+day-1)%7===0) html+='</tr><tr>';
-    html+='<td'+(day===d?' class="today"':'')+'>'+day+'</td>';
+  var dows = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  var first = new Date(year, month, 1);
+  var startDow = first.getDay();
+  var daysInMonth = new Date(year, month+1, 0).getDate();
+
+  var html = '<table class="cal"><thead><tr>';
+  for(var d=0; d<7; d++) html += '<th>' + dows[d] + '</th>';
+  html += '</tr></thead><tbody>';
+
+  var day = 1;
+  for(var r=0; r<6; r++){
+    html += '<tr>';
+    for(var c=0; c<7; c++){
+      var idx = r*7 + c;
+      if(idx < startDow || day > daysInMonth){
+        html += '<td class="blank">.</td>';
+      } else {
+        var cls = (day === today) ? 'today' : '';
+        html += '<td class="'+cls+'">' + day + '</td>';
+        day++;
+      }
+    }
+    html += '</tr>';
   }
-  html+='</tr></table>';
-  document.getElementById('calWrap').innerHTML=html;
+  html += '</tbody></table>';
+  document.getElementById('calWrap').innerHTML = html;
+
+  // ---- News (limit to 6; no scroll) ----
+  var rssUrl = "https://news.google.com/rss/search?q=site:reuters.com&hl=en-US&gl=US&ceid=US:en";
+  var bridge = "https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(rssUrl);
+
+  var reqN = new XMLHttpRequest();
+  reqN.onreadystatechange=function(){
+    if(reqN.readyState===4){
+      var ul = document.getElementById('news');
+      ul.innerHTML = "";
+      if(reqN.status!==200){
+        ul.innerHTML = "<li>News unavailable</li>";
+        return;
+      }
+      try{
+        var data = JSON.parse(reqN.responseText);
+        var items = (data.items || []).slice(0, 6);
+        if(!items.length){
+          ul.innerHTML = "<li>No headlines</li>";
+          return;
+        }
+        for(var i=0;i<items.length;i++){
+          var it = items[i];
+          var li = document.createElement('li');
+          var a = document.createElement('a');
+          a.href = it.link;
+          a.textContent = it.title;
+          a.target = "_self";
+          li.appendChild(a);
+          ul.appendChild(li);
+        }
+      }catch(e){
+        ul.innerHTML = "<li>News unavailable</li>";
+      }
+    }
+  };
+  reqN.open("GET", bridge, true);
+  reqN.send();
 
 })();
 </script>
