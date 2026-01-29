@@ -3,14 +3,12 @@
 <head>
   <meta charset="utf-8">
 
-  <!-- iOS Home Screen / standalone hints -->
+  <!-- iOS standalone -->
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Wall">
   <meta name="format-detection" content="telephone=no">
-
-  <!-- Refresh whole page every 10 min -->
   <meta http-equiv="refresh" content="600">
 
   <title>Wall</title>
@@ -23,33 +21,27 @@
       color:#fff;
       font-family:-apple-system, Helvetica, Arial, sans-serif;
       overflow:hidden;
-      -webkit-text-size-adjust:100%;
     }
 
     .wrap{
       padding:10px;
       max-width:760px;
       margin:0 auto;
-      box-sizing:border-box;
       height:100%;
       display:flex;
       flex-direction:column;
       gap:10px;
+      box-sizing:border-box;
     }
 
-    .row{
-      display:flex;
-      gap:10px;
-      min-height:0;
-    }
-
+    .row{ display:flex; gap:10px; min-height:0; }
     .card{
       background:#141417;
       border:1px solid #23232a;
       border-radius:16px;
       padding:10px;
-      box-sizing:border-box;
       overflow:hidden;
+      box-sizing:border-box;
     }
 
     .label{
@@ -57,13 +49,13 @@
       letter-spacing:.18em;
       text-transform:uppercase;
       opacity:.65;
-      margin:0 0 8px 0;
+      margin-bottom:8px;
     }
 
-    /* Heights tuned for iPad mini portrait */
+    /* Layout */
     .topRow{ flex:0 0 26%; }
     .calCard{ flex:0 0 44%; }
-    .newsCard{ flex:1 1 auto; }
+    .newsCard{ flex:1; }
 
     .clockCard{ flex:1.15; }
     .wxCard{ flex:0.85; }
@@ -81,7 +73,7 @@
       opacity:.82;
     }
 
-    /* Day progress bar */
+    /* Day progress */
     .progressWrap{ margin-top:10px; }
     .progressMeta{
       display:flex;
@@ -103,53 +95,32 @@
       background:rgba(154,208,255,.85);
     }
 
-    /* Weather (text-only, stylized) */
+    /* Weather (plain text, styled) */
     .wxText{
       height:calc(100% - 22px);
       display:flex;
       flex-direction:column;
       justify-content:center;
-      gap:8px;
+      gap:6px;
     }
     .wxTemp{
       font-size:46px;
       font-weight:650;
       line-height:1;
-      letter-spacing:.5px;
     }
     .wxCond{
       font-size:16px;
-      opacity:.88;
-      line-height:1.2;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-    }
-    .wxMetaRow{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      font-size:12px;
-      opacity:.7;
-    }
-    .wxPill{
-      border:1px solid rgba(255,255,255,.10);
-      background:#101013;
-      border-radius:999px;
-      padding:6px 10px;
-      white-space:nowrap;
+      opacity:.85;
     }
 
     /* Calendar */
     .calTitle{
       font-size:14px;
       font-weight:650;
-      opacity:.95;
-      margin:0 0 6px 0;
+      margin-bottom:6px;
     }
     table.cal{
       width:100%;
-      border-collapse:separate;
       border-spacing:6px;
       table-layout:fixed;
     }
@@ -159,286 +130,135 @@
       text-transform:uppercase;
       opacity:.5;
       text-align:left;
-      padding:0 0 2px 2px;
     }
     table.cal td{
       height:34px;
-      vertical-align:top;
       padding:6px;
       border-radius:12px;
       background:#101013;
       border:1px solid rgba(255,255,255,.08);
       font-size:12px;
-      opacity:.92;
     }
     td.today{
       border-color:rgba(154,208,255,.55);
-      box-shadow:0 0 0 1px rgba(154,208,255,.25) inset;
       background:#0f141c;
     }
-    td.blank{
-      background:transparent;
-      border:1px solid transparent;
-      opacity:0;
-    }
+    td.blank{ opacity:0; }
 
     /* News */
     .newsList{ list-style:none; padding:0; margin:0; }
-    .newsList li{ margin:7px 0; line-height:1.15; font-size:13px; }
-    .newsList a{ color:#fff; text-decoration:none; opacity:.92; }
-    .newsList a:active, .newsList a:hover{ text-decoration:underline; opacity:1; }
+    .newsList li{ margin:7px 0; font-size:13px; }
+    .newsList a{ color:#fff; text-decoration:none; opacity:.9; }
 
-    @media (max-width: 520px){
-      .clock{ font-size:52px; }
-      .wxTemp{ font-size:42px; }
-      table.cal td{ height:32px; }
-      .newsList li{ font-size:12px; }
-    }
   </style>
 </head>
 
 <body>
-  <div class="wrap">
+<div class="wrap">
 
-    <div class="row topRow">
-      <div class="card clockCard">
-        <div class="clock" id="clock">--:--</div>
-        <div class="date" id="date">—</div>
+  <div class="row topRow">
+    <div class="card clockCard">
+      <div class="clock" id="clock">--:--</div>
+      <div class="date" id="date">—</div>
 
-        <div class="progressWrap">
-          <div class="progressMeta">
-            <span id="dayPct">—%</span>
-            <span id="dayLeft">—h left</span>
-          </div>
-          <div class="bar"><div class="barFill" id="barFill"></div></div>
+      <div class="progressWrap">
+        <div class="progressMeta">
+          <span id="dayPct">—%</span>
+          <span id="dayLeft">—h left</span>
         </div>
-      </div>
-
-      <div class="card wxCard">
-        <div class="label">Weather · 43207</div>
-        <div class="wxText">
-          <div class="wxTemp" id="wxTemp">—°F</div>
-          <div class="wxCond" id="wxCond">Loading…</div>
-          <div class="wxMetaRow">
-            <div class="wxPill" id="wxSunset">Sunset —</div>
-            <div class="wxPill" id="wxFeels">Feels —</div>
-          </div>
-        </div>
+        <div class="bar"><div class="barFill" id="barFill"></div></div>
       </div>
     </div>
 
-    <div class="card calCard">
-      <div class="label">Calendar</div>
-      <div class="calTitle" id="calTitle">—</div>
-      <div id="calWrap"></div>
+    <div class="card wxCard">
+      <div class="label">Weather · 43207</div>
+      <div class="wxText">
+        <div class="wxTemp" id="wxTemp">—°</div>
+        <div class="wxCond" id="wxCond">Loading…</div>
+      </div>
     </div>
-
-    <div class="card newsCard">
-      <div class="label">Reuters</div>
-      <ul class="newsList" id="news"><li>Loading…</li></ul>
-    </div>
-
   </div>
+
+  <div class="card calCard">
+    <div class="label">Calendar</div>
+    <div class="calTitle" id="calTitle">—</div>
+    <div id="calWrap"></div>
+  </div>
+
+  <div class="card newsCard">
+    <div class="label">Reuters</div>
+    <ul class="newsList" id="news"><li>Loading…</li></ul>
+  </div>
+
+</div>
 
 <script>
 (function(){
-  document.addEventListener('click', function(e){
-    var t = e.target;
-    while(t && t.tagName !== 'A') t = t.parentNode;
-    if(!t) return;
-    t.setAttribute('target','_self');
-  }, true);
+  function pad(n){return (n<10?'0':'')+n;}
 
-  function pad(n){ return (n<10?'0':'')+n; }
-
-  // ---- Clock + Day progress ----
-  function updateClockAndProgress(){
-    var d = new Date();
-
-    var h = d.getHours(), m = d.getMinutes();
-    var ampm = h>=12 ? 'PM' : 'AM';
-    var h12 = h%12; if(h12===0) h12=12;
-    document.getElementById('clock').textContent = h12 + ':' + pad(m) + ' ' + ampm;
-    document.getElementById('date').textContent =
+  /* Clock + progress */
+  function tick(){
+    var d=new Date();
+    var h=d.getHours(), m=d.getMinutes();
+    var am=h>=12?'PM':'AM';
+    h=h%12||12;
+    document.getElementById('clock').textContent=h+':'+pad(m)+' '+am;
+    document.getElementById('date').textContent=
       d.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric',year:'numeric'});
 
-    var start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0);
-    var end   = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59);
-    var pct = Math.max(0, Math.min(1, (d - start) / (end - start)));
-    document.getElementById('dayPct').textContent = Math.round(pct*100) + "%";
-
-    var msLeft = end - d;
-    var hrsLeft = Math.floor(msLeft / (1000*60*60));
-    var minsLeft = Math.floor((msLeft - hrsLeft*1000*60*60) / (1000*60));
-    document.getElementById('dayLeft').textContent = hrsLeft + "h " + minsLeft + "m left";
-    document.getElementById('barFill').style.width = (pct*100) + "%";
+    var start=new Date(d.getFullYear(),d.getMonth(),d.getDate());
+    var end=new Date(d.getFullYear(),d.getMonth(),d.getDate(),23,59,59);
+    var pct=(d-start)/(end-start);
+    document.getElementById('dayPct').textContent=Math.round(pct*100)+'%';
+    document.getElementById('dayLeft').textContent=
+      Math.floor((end-d)/36e5)+'h left';
+    document.getElementById('barFill').style.width=(pct*100)+'%';
   }
-  updateClockAndProgress();
-  setInterval(updateClockAndProgress, 1000);
+  tick(); setInterval(tick,1000);
 
-  // ---- Simple XHR JSON fetch (iOS9 safe-ish) ----
-  function getJSON(url, cb){
-    var r = new XMLHttpRequest();
-    r.onreadystatechange = function(){
-      if(r.readyState === 4){
-        if(r.status !== 200) return cb(null);
-        try { cb(JSON.parse(r.responseText)); } catch(e){ cb(null); }
+  /* Weather — dumb text, cleaned */
+  function loadWeather(){
+    var r=new XMLHttpRequest();
+    r.onreadystatechange=function(){
+      if(r.readyState===4){
+        if(r.status!==200){ return; }
+        var t=r.responseText.replace(/[^\x00-\x7F]/g,'').trim();
+        var parts=t.split(' ');
+        var temp='—°', cond='';
+        for(var i=0;i<parts.length;i++){
+          if(parts[i].indexOf('°F')>-1){ temp=parts[i]; }
+          else cond+=parts[i]+' ';
+        }
+        document.getElementById('wxTemp').textContent=temp;
+        document.getElementById('wxCond').textContent=cond.trim();
       }
     };
-    r.open("GET", url, true);
-    r.setRequestHeader("Accept", "application/geo+json, application/json");
+    r.open('GET','https://wttr.in/43207?format=2',true);
     r.send();
   }
-
-  // ---- Weather via NOAA/NWS ----
-  // Step 1: Get gridpoint for 43207 (Columbus area) using NWS points endpoint with lat/lon.
-  // 43207 is roughly 39.92, -82.93 (close enough for a dashboard).
-  var LAT = 39.92;
-  var LON = -82.93;
-
-  function setWx(tempF, cond, feelsF, sunsetStr){
-    document.getElementById('wxTemp').textContent = (tempF != null ? (tempF + "°F") : "—°F");
-    document.getElementById('wxCond').textContent = cond || "Weather unavailable";
-    document.getElementById('wxFeels').textContent = "Feels " + (feelsF != null ? (feelsF + "°F") : "—");
-    document.getElementById('wxSunset').textContent = "Sunset " + (sunsetStr || "—");
-  }
-
-  function loadWeather(){
-    // points: https://api.weather.gov/points/{lat},{lon}
-    getJSON("https://api.weather.gov/points/" + LAT + "," + LON, function(points){
-      if(!points || !points.properties){
-        setWx(null, "Weather unavailable", null, null);
-        return;
-      }
-
-      var forecastHourly = points.properties.forecastHourly; // JSON URL
-      var gridId = points.properties.gridId;
-      var gridX = points.properties.gridX;
-      var gridY = points.properties.gridY;
-
-      // Hourly conditions
-      getJSON(forecastHourly, function(hourly){
-        if(!hourly || !hourly.properties || !hourly.properties.periods || !hourly.properties.periods.length){
-          setWx(null, "Weather unavailable", null, null);
-          return;
-        }
-        var p0 = hourly.properties.periods[0];
-
-        // p0.temperature already in F
-        var tempF = (typeof p0.temperature === "number") ? p0.temperature : null;
-        var cond = p0.shortForecast || p0.detailedForecast || "—";
-
-        // Use wind chill / heat index if available (in grids endpoint); if not, just mirror temp
-        var feels = tempF;
-
-        // Try to fetch "feels like" from grid data (optional)
-        var gridUrl = "https://api.weather.gov/gridpoints/" + gridId + "/" + gridX + "," + gridY;
-
-        getJSON(gridUrl, function(grid){
-          if(grid && grid.properties){
-            // temperature + apparentTemperature are arrays; take first value if exists
-            try{
-              var app = grid.properties.apparentTemperature && grid.properties.apparentTemperature.values;
-              if(app && app.length && typeof app[0].value === "number"){
-                // apparentTemperature is in Celsius
-                feels = Math.round(app[0].value * 9/5 + 32);
-              }
-            }catch(e){}
-          }
-
-          // Sunset from sunrise-sunset.org (simple, no emoji)
-          // It returns UTC; we convert to local.
-          var ssUrl = "https://api.sunrise-sunset.org/json?lat=" + LAT + "&lng=" + LON + "&formatted=0";
-          getJSON(ssUrl, function(ss){
-            var sunsetStr = null;
-            if(ss && ss.results && ss.results.sunset){
-              var sunsetUtc = new Date(ss.results.sunset);
-              // Convert to local and format time only
-              sunsetStr = sunsetUtc.toLocaleTimeString(undefined, {hour:'numeric', minute:'2-digit'});
-            }
-            setWx(tempF, cond, feels, sunsetStr);
-          });
-        });
-      });
-    });
-  }
-
   loadWeather();
-  setInterval(loadWeather, 10*60*1000);
+  setInterval(loadWeather,600000);
 
-  // ---- Calendar: current month only ----
-  var now = new Date();
-  var year = now.getFullYear();
-  var month = now.getMonth();
-  var today = now.getDate();
+  /* Calendar — current month only */
+  var n=new Date(), y=n.getFullYear(), m=n.getMonth(), d=n.getDate();
+  document.getElementById('calTitle').textContent=
+    n.toLocaleDateString(undefined,{month:'long'});
 
-  document.getElementById('calTitle').textContent =
-    now.toLocaleDateString(undefined,{month:'long'});
+  var first=new Date(y,m,1).getDay();
+  var days=new Date(y,m+1,0).getDate();
+  var html='<table class="cal"><tr>';
+  ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(function(x){
+    html+='<th>'+x+'</th>';
+  });
+  html+='</tr><tr>';
 
-  var dows = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-  var first = new Date(year, month, 1);
-  var startDow = first.getDay();
-  var daysInMonth = new Date(year, month+1, 0).getDate();
-
-  var html = '<table class="cal"><thead><tr>';
-  for(var d=0; d<7; d++) html += '<th>' + dows[d] + '</th>';
-  html += '</tr></thead><tbody>';
-
-  var day = 1;
-  for(var r=0; r<6; r++){
-    html += '<tr>';
-    for(var c=0; c<7; c++){
-      var idx = r*7 + c;
-      if(idx < startDow || day > daysInMonth){
-        html += '<td class="blank">.</td>';
-      } else {
-        var cls = (day === today) ? 'today' : '';
-        html += '<td class="'+cls+'">' + day + '</td>';
-        day++;
-      }
-    }
-    html += '</tr>';
+  for(var i=0;i<first;i++) html+='<td class="blank"></td>';
+  for(var day=1;day<=days;day++){
+    if((first+day-1)%7===0) html+='</tr><tr>';
+    html+='<td'+(day===d?' class="today"':'')+'>'+day+'</td>';
   }
-  html += '</tbody></table>';
-  document.getElementById('calWrap').innerHTML = html;
-
-  // ---- News ----
-  var rssUrl = "https://news.google.com/rss/search?q=site:reuters.com&hl=en-US&gl=US&ceid=US:en";
-  var bridge = "https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(rssUrl);
-
-  var reqN = new XMLHttpRequest();
-  reqN.onreadystatechange=function(){
-    if(reqN.readyState===4){
-      var ul = document.getElementById('news');
-      ul.innerHTML = "";
-      if(reqN.status!==200){
-        ul.innerHTML = "<li>News unavailable</li>";
-        return;
-      }
-      try{
-        var data = JSON.parse(reqN.responseText);
-        var items = (data.items || []).slice(0, 6);
-        if(!items.length){
-          ul.innerHTML = "<li>No headlines</li>";
-          return;
-        }
-        for(var i=0;i<items.length;i++){
-          var it = items[i];
-          var li = document.createElement('li');
-          var a = document.createElement('a');
-          a.href = it.link;
-          a.textContent = it.title;
-          a.target = "_self";
-          li.appendChild(a);
-          ul.appendChild(li);
-        }
-      }catch(e){
-        ul.innerHTML = "<li>News unavailable</li>";
-      }
-    }
-  };
-  reqN.open("GET", bridge, true);
-  reqN.send();
+  html+='</tr></table>';
+  document.getElementById('calWrap').innerHTML=html;
 
 })();
 </script>
