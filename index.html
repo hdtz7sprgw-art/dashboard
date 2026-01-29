@@ -14,7 +14,7 @@
     }
     .wrap{
       padding:16px;
-      max-width:760px;           /* portrait-friendly width */
+      max-width:760px; /* portrait-friendly */
       margin:0 auto;
     }
     .card{
@@ -32,7 +32,7 @@
       margin:0 0 10px 0;
     }
 
-    /* Top: Clock */
+    /* Clock */
     .clock{
       font-size:76px;
       font-weight:650;
@@ -45,16 +45,82 @@
       opacity:.82;
     }
 
-    /* Weather */
-    .wxLine{
-      font-size:20px;
-      font-weight:600;
-      opacity:.95;
+    /* Weather (fills card, clean) */
+    .wxTop{
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-end;
+      gap:12px;
     }
-    .wxDetail{
+    .wxNow{
+      display:flex;
+      align-items:baseline;
+      gap:12px;
+      min-width:0;
+    }
+    .wxTemp{
+      font-size:46px;
+      font-weight:700;
+      letter-spacing:.5px;
+      line-height:1;
+      white-space:nowrap;
+    }
+    .wxCond{
+      font-size:18px;
+      font-weight:600;
+      opacity:.92;
+      line-height:1.2;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width:320px;
+    }
+    .wxMeta{
+      text-align:right;
+      font-size:13px;
+      opacity:.72;
+      line-height:1.3;
+      white-space:pre-line;
+      flex:0 0 auto;
+    }
+    .wxForecast{
+      margin-top:12px;
+      display:grid;
+      grid-template-columns:repeat(5, 1fr);
+      gap:10px;
+    }
+    .wxDay{
+      background:#101013;
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:12px;
+      padding:10px;
+      min-height:86px;
+    }
+    .wxDow{
+      font-size:11px;
+      letter-spacing:.12em;
+      text-transform:uppercase;
+      opacity:.55;
+    }
+    .wxIcon{
+      font-size:18px;
+      margin-top:6px;
+    }
+    .wxRange{
       margin-top:6px;
       font-size:14px;
-      opacity:.78;
+      font-weight:650;
+      opacity:.92;
+      white-space:nowrap;
+    }
+    .wxMini{
+      margin-top:4px;
+      font-size:12px;
+      opacity:.65;
+      line-height:1.2;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
     }
 
     /* Calendar */
@@ -100,7 +166,7 @@
       background:#0f141c;
     }
 
-    /* News */
+    /* News (white, styled) */
     .newsList{
       list-style:none;
       padding:0;
@@ -127,6 +193,9 @@
       .card{padding:12px;border-radius:16px}
       .clock{font-size:64px}
       .cell{height:42px;border-radius:10px}
+      .wxForecast{grid-template-columns:repeat(3,1fr)}
+      .wxTemp{font-size:40px}
+      .wxCond{max-width:220px}
     }
   </style>
 </head>
@@ -138,10 +207,16 @@
       <div class="date" id="date">—</div>
     </div>
 
-    <div class="card">
+    <div class="card" id="weatherCard">
       <div class="label">Weather · 43207</div>
-      <div class="wxLine" id="wxLine">Loading…</div>
-      <div class="wxDetail" id="wxDetail"></div>
+      <div class="wxTop">
+        <div class="wxNow">
+          <div class="wxTemp" id="wxTemp">--°</div>
+          <div class="wxCond" id="wxCond">Loading…</div>
+        </div>
+        <div class="wxMeta" id="wxMeta"></div>
+      </div>
+      <div class="wxForecast" id="wxForecast"></div>
     </div>
 
     <div class="card">
@@ -160,7 +235,7 @@
 
 <script>
 (function(){
-  // Clock
+  // ---------- Clock ----------
   function pad(n){return (n<10?'0':'')+n;}
   function tick(){
     var d=new Date();
@@ -173,30 +248,142 @@
   }
   tick(); setInterval(tick, 1000);
 
-  // Weather (white text, minimal)
-  var wx1 = new XMLHttpRequest();
-  wx1.onreadystatechange=function(){
-    if(wx1.readyState===4){
-      document.getElementById('wxLine').textContent =
-        (wx1.status===200 && wx1.responseText) ? wx1.responseText.trim() : "Weather unavailable";
-      var wx2 = new XMLHttpRequest();
-      wx2.onreadystatechange=function(){
-        if(wx2.readyState===4){
-          if(wx2.status===200 && wx2.responseText){
-            document.getElementById('wxDetail').textContent = wx2.responseText.trim();
-          } else {
-            document.getElementById('wxDetail').textContent = "";
-          }
-        }
-      };
-      wx2.open("GET","https://wttr.in/43207?format=3",true);
-      wx2.send();
-    }
-  };
-  wx1.open("GET","https://wttr.in/43207?format=1",true);
-  wx1.send();
+  // ---------- Helpers ----------
+  function stripPlus(s){ return (s || "").replace(/\+/g, ""); }
+  function setText(id, txt){
+    var el = document.getElementById(id);
+    if(el) el.textContent = txt;
+  }
+  function fetchText(url, cb){
+    var r = new XMLHttpRequest();
+    r.onreadystatechange = function(){
+      if(r.readyState === 4){
+        cb((r.status === 200) ? r.responseText : null);
+      }
+    };
+    r.open("GET", url, true);
+    r.send();
+  }
 
-  // Month calendar grid
+  // ---------- Weather (current + 5-day, clean) ----------
+  // Current: icon | temp | condition | wind | humidity
+  var nowUrl = "https://wttr.in/43207?format=%c|%t|%C|%w|%h";
+  fetchText(nowUrl, function(txt){
+    if(!txt){
+      setText("wxTemp", "--°");
+      setText("wxCond", "Weather unavailable");
+      setText("wxMeta", "");
+      return;
+    }
+    var parts = txt.trim().split("|");
+    var icon = (parts[0] || "").trim();
+    var temp = stripPlus((parts[1] || "").trim());
+    var cond = (parts[2] || "").trim();
+    var wind = (parts[3] || "").trim();
+    var hum  = (parts[4] || "").trim();
+
+    // Show: "❄️ 10°F" + condition
+    setText("wxTemp", (icon ? (icon + " ") : "") + temp);
+    setText("wxCond", cond || "");
+    // Right-side meta: wind + humidity
+    var meta = [];
+    if(wind) meta.push("Wind " + wind);
+    if(hum)  meta.push("Hum " + hum);
+    setText("wxMeta", meta.join("\n"));
+  });
+
+  // Forecast: use JSON for reliability and build 5 small tiles
+  // wttr JSON endpoint is light enough; we only extract a few fields.
+  var jsonUrl = "https://wttr.in/43207?format=j1";
+  (function(){
+    var r = new XMLHttpRequest();
+    r.onreadystatechange = function(){
+      if(r.readyState !== 4) return;
+
+      var host = document.getElementById("wxForecast");
+      if(!host) return;
+      host.innerHTML = "";
+
+      if(r.status !== 200 || !r.responseText){
+        return; // fail quietly (clean UI)
+      }
+
+      try{
+        var data = JSON.parse(r.responseText);
+        var days = (data.weather || []).slice(0,5);
+
+        function dowFromISO(iso){
+          var d = new Date(iso);
+          return d.toLocaleDateString(undefined,{weekday:'short'});
+        }
+
+        for(var i=0;i<days.length;i++){
+          var day = days[i];
+
+          // date like "2026-01-28"
+          var dow = day.date ? dowFromISO(day.date) : ("Day " + (i+1));
+
+          // max/min in F
+          var hi = stripPlus((day.maxtempF || "").toString() + "°F");
+          var lo = stripPlus((day.mintempF || "").toString() + "°F");
+
+          // midday condition
+          var hourly = day.hourly && day.hourly.length ? day.hourly : [];
+          var mid = hourly.length ? hourly[Math.floor(hourly.length/2)] : null;
+
+          var desc = "";
+          if(mid && mid.weatherDesc && mid.weatherDesc[0] && mid.weatherDesc[0].value){
+            desc = mid.weatherDesc[0].value;
+          } else if(day.hourly && day.hourly[0] && day.hourly[0].weatherDesc && day.hourly[0].weatherDesc[0]) {
+            desc = day.hourly[0].weatherDesc[0].value || "";
+          }
+
+          // Use a simple emoji based on desc (keeps it readable)
+          function iconFor(s){
+            s = (s||"").toLowerCase();
+            if(s.indexOf("snow")>-1 || s.indexOf("sleet")>-1) return "❄️";
+            if(s.indexOf("thunder")>-1) return "⛈️";
+            if(s.indexOf("rain")>-1 || s.indexOf("drizzle")>-1 || s.indexOf("shower")>-1) return "🌧️";
+            if(s.indexOf("fog")>-1 || s.indexOf("mist")>-1 || s.indexOf("haze")>-1) return "🌫️";
+            if(s.indexOf("cloud")>-1 || s.indexOf("overcast")>-1) return "☁️";
+            if(s.indexOf("sun")>-1 || s.indexOf("clear")>-1) return "☀️";
+            return "🌤️";
+          }
+
+          var tile = document.createElement("div");
+          tile.className = "wxDay";
+
+          var e1 = document.createElement("div");
+          e1.className = "wxDow";
+          e1.textContent = dow;
+
+          var e2 = document.createElement("div");
+          e2.className = "wxIcon";
+          e2.textContent = iconFor(desc);
+
+          var e3 = document.createElement("div");
+          e3.className = "wxRange";
+          e3.textContent = hi + " / " + lo;
+
+          var e4 = document.createElement("div");
+          e4.className = "wxMini";
+          e4.textContent = desc;
+
+          tile.appendChild(e1);
+          tile.appendChild(e2);
+          tile.appendChild(e3);
+          tile.appendChild(e4);
+          host.appendChild(tile);
+        }
+      }catch(e){
+        // fail quietly
+      }
+    };
+    r.open("GET", jsonUrl, true);
+    r.send();
+  })();
+
+  // ---------- Month Calendar ----------
   var now = new Date();
   var year = now.getFullYear();
   var month = now.getMonth();
@@ -242,7 +429,7 @@
     grid.appendChild(box);
   }
 
-  // Reuters headlines (styled in white)
+  // ---------- Reuters headlines (white, styled) ----------
   var rssUrl = "https://news.google.com/rss/search?q=site:reuters.com&hl=en-US&gl=US&ceid=US:en";
   var bridge = "https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(rssUrl);
 
@@ -278,6 +465,7 @@
   };
   req.open("GET", bridge, true);
   req.send();
+
 })();
 </script>
 </body>
