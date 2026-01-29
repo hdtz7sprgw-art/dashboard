@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>Dashboard</title>
+<title>Hub Dashboard</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
@@ -37,50 +37,59 @@
 
   /* --- TOP DATA RIBBON --- */
   .status-ribbon {
-    font-size: 12px; font-weight: 600; color: #0a84ff;
+    font-size: 11px; font-weight: 600; color: #30d158;
     margin-bottom: 4px; display: -webkit-flex; display: flex;
     -webkit-justify-content: space-between; justify-content: space-between;
+    text-transform: uppercase; letter-spacing: 1px;
   }
 
   /* --- CLOCK --- */
-  #time { font-size: 72px; font-weight: 200; line-height: 1; letter-spacing: -2px; }
-  #date { font-size: 18px; color: #aeaeb2; margin-bottom: 10px; }
+  #time { font-size: 80px; font-weight: 200; line-height: 1; letter-spacing: -3px; color: #fff; }
+  #date { font-size: 18px; color: #aeaeb2; margin-bottom: 15px; font-weight: 400; }
   
   /* Progress Bars */
   .p-row { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; margin-bottom: 8px; }
-  .p-label { width: 40px; font-size: 10px; color: #636366; font-weight: 800; }
-  .p-track { -webkit-flex: 1; flex: 1; height: 6px; background: #3a3a3c; border-radius: 3px; overflow: hidden; margin: 0 8px; }
+  .p-label { width: 45px; font-size: 10px; color: #636366; font-weight: 800; }
+  .p-track { -webkit-flex: 1; flex: 1; height: 6px; background: #3a3a3c; border-radius: 3px; overflow: hidden; margin: 0 10px; }
   .p-fill { height: 100%; background: #0a84ff; width: 0%; transition: width 1s; }
   .p-val { font-size: 10px; color: #8e8e93; width: 30px; text-align: right; }
 
-  /* --- WEATHER WIDGET (The "Safe" Way) --- */
-  .wx-container { width: 100%; height: 100%; border: none; overflow: hidden; border-radius: 8px; }
+  /* --- WEATHER (The Bulletproof Image Method) --- */
+  .wx-box {
+    -webkit-flex: 1; flex: 1;
+    display: -webkit-flex; display: flex;
+    -webkit-align-items: center; align-items: center;
+    -webkit-justify-content: center; justify-content: center;
+    overflow: hidden;
+  }
+  /* Using wttr.in but as a direct PNG image to bypass JS errors */
+  #wx-img { max-width: 100%; filter: invert(1) hue-rotate(180deg) brightness(1.5); }
 
   /* --- NEWS (Narrow) --- */
   #news-list { list-style: none; padding: 0; margin: 0; }
   #news-list li { margin-bottom: 14px; border-bottom: 1px solid #2c2c2e; padding-bottom: 8px; }
-  #news-list a { color: #e5e5ea; text-decoration: none; font-size: 12px; line-height: 1.4; font-weight: 400; display: block; }
+  #news-list a { color: #e5e5ea; text-decoration: none; font-size: 12px; line-height: 1.4; display: block; }
   .news-source { font-size: 9px; color: #636366; margin-top: 4px; display: block; }
 
   /* --- CALENDAR (Wide) --- */
   .cal-grid { display: table; width: 100%; height: 100%; table-layout: fixed; }
   .cal-row { display: table-row; }
-  .cal-cell { display: table-cell; text-align: center; vertical-align: middle; font-size: 16px; color: #8e8e93; padding: 5px 0; }
+  .cal-cell { display: table-cell; text-align: center; vertical-align: middle; font-size: 18px; color: #8e8e93; padding: 6px 0; }
   .cal-head { color: #0a84ff; font-weight: 700; font-size: 11px; }
-  .is-today { background-color: #ff3b30; color: #fff; font-weight: bold; border-radius: 50%; width: 32px; height: 32px; margin: 0 auto; line-height: 32px; display: block; }
+  .is-today { background-color: #ff3b30; color: #fff; font-weight: bold; border-radius: 50%; width: 36px; height: 36px; margin: 0 auto; line-height: 36px; display: block; }
 
-  /* --- QUOTE --- */
-  #quote-box { font-size: 12px; color: #636366; font-style: italic; text-align: center; margin-top: 8px; }
+  /* --- FOOTER QUOTE --- */
+  #quote-box { font-size: 12px; color: #48484a; text-align: center; margin-top: 10px; letter-spacing: 0.5px; }
 </style>
 </head>
 <body>
 
 <div class="container">
-  <div class="row" style="height: 40%;">
+  <div class="row" style="height: 42%;">
     <div class="card col-2">
       <div class="status-ribbon">
-        <span id="sys-battery">Battery: --%</span>
-        <span id="sys-season">Season: Winter</span>
+        <span id="sys-focus">Focus: Clarity</span>
+        <span id="sys-battery">Batt: --%</span>
       </div>
       <div id="time">00:00</div>
       <div id="date">Loading...</div>
@@ -89,16 +98,18 @@
       <div class="p-row"><div class="p-label">YEAR</div><div class="p-track"><div class="p-fill" id="p-year"></div></div><div class="p-val" id="v-year">0%</div></div>
     </div>
 
-    <div class="card col-1" style="background: #1c1c1e;">
+    <div class="card col-1">
       <div class="header">Weather</div>
-      <iframe src="https://forecast7.com/en/39d96n83d00/columbus/?unit=us&theme=dark" class="wx-container" scrolling="no" frameborder="0"></iframe>
+      <div class="wx-box">
+        <img id="wx-img" src="https://wttr.in/43207_2pt_lang=en.png?0&T&q" alt="Weather">
+      </div>
     </div>
   </div>
 
-  <div class="row" style="height: 55%;">
+  <div class="row" style="height: 53%;">
     <div class="card col-1">
-      <div class="header">News</div>
-      <ul id="news-list"><li>Loading...</li></ul>
+      <div class="header">Headlines</div>
+      <ul id="news-list"><li>Updating...</li></ul>
     </div>
 
     <div class="card col-2">
@@ -107,7 +118,7 @@
     </div>
   </div>
   
-  <div id="quote-box">"Simplicity is the ultimate sophistication."</div>
+  <div id="quote-box">System Active • Columbus, OH</div>
 </div>
 
 <script>
@@ -115,18 +126,11 @@
   'use strict';
   var getEl = function(id) { return document.getElementById(id); };
 
-  // --- SYSTEM DATA ---
-  function updateSystem() {
-    // Battery
-    if (navigator.getBattery) {
-      navigator.getBattery().then(function(battery) {
-        getEl('sys-battery').innerText = 'Battery: ' + Math.floor(battery.level * 100) + '%';
-      });
-    }
-    // Season
-    var m = new Date().getMonth();
-    var seasons = ["Winter","Winter","Spring","Spring","Spring","Summer","Summer","Summer","Autumn","Autumn","Autumn","Winter"];
-    getEl('sys-season').innerText = 'Season: ' + seasons[m];
+  // --- FOCUS WORDS ---
+  function updateFocus() {
+    var words = ["Discipline", "Clarity", "Presence", "Growth", "Action", "Focus", "Patience"];
+    var day = new Date().getDay();
+    getEl('sys-focus').innerText = 'Focus: ' + words[day];
   }
 
   // --- CLOCK & PROGRESS ---
@@ -135,7 +139,7 @@
     var h = now.getHours(), m = now.getMinutes();
     var ampm = h >= 12 ? 'pm' : 'am';
     h = h % 12 || 12;
-    getEl('time').innerHTML = h + ':' + (m < 10 ? '0'+m : m) + '<span style="font-size:24px; margin-left:8px; opacity:0.5;">' + ampm + '</span>';
+    getEl('time').innerHTML = h + ':' + (m < 10 ? '0'+m : m) + '<span style="font-size:24px; margin-left:8px; opacity:0.3;">' + ampm + '</span>';
     getEl('date').innerText = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
     var dayPct = ((now - new Date(now.getFullYear(), now.getMonth(), now.getDate())) / 86400000) * 100;
@@ -152,7 +156,7 @@
   // --- CALENDAR ---
   function renderCalendar() {
     var now = new Date(), y = now.getFullYear(), m = now.getMonth(), today = now.getDate();
-    getEl('cal-month-name').innerText = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    getEl('cal-month-name').innerText = now.toLocaleDateString('en-US', { month: 'long' });
     var first = new Date(y, m, 1).getDay(), last = new Date(y, m+1, 0).getDate();
     var html = '<div class="cal-grid"><div class="cal-row">', days = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
     for(var i=0; i<7; i++) html += '<div class="cal-cell cal-head">' + days[i] + '</div>';
@@ -184,10 +188,24 @@
     xhr.send();
   }
 
-  updateClock(); renderCalendar(); updateNews(); updateSystem();
+  function updateBattery() {
+    if (navigator.getBattery) {
+      navigator.getBattery().then(function(b) {
+        getEl('sys-battery').innerText = 'Batt: ' + Math.floor(b.level * 100) + '%';
+      });
+    }
+  }
+
+  // --- REFRESH WEATHER IMAGE ---
+  function refreshWeather() {
+    // Adding a timestamp to the URL forces the iPad to download a fresh image
+    getEl('wx-img').src = "https://wttr.in/43207_2pt_lang=en.png?0&T&q&t=" + new Date().getTime();
+  }
+
+  updateClock(); renderCalendar(); updateNews(); updateFocus(); updateBattery();
   setInterval(updateClock, 1000);
   setInterval(updateNews, 1800000);
-  setInterval(updateSystem, 60000);
+  setInterval(refreshWeather, 1200000); // Refresh image every 20 mins
 })();
 </script>
 </body>
